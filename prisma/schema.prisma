@@ -1,0 +1,48 @@
+// Prisma schema for Angel Bakery mooncake orders.
+// Docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Order {
+  id          String   @id @default(cuid())
+  // Customer info
+  name        String
+  contact     String
+  orderDate   String?
+  neededBy    String?
+  // Line items: [{ productId, name, cn, flavour, eggYolk, qty, price, remarks }]
+  items       Json
+  // Money
+  subtotal    Float
+  deliveryFee Float    @default(0)
+  total       Float
+  // Fulfilment & payment
+  payment     String?
+  fulfilment  String? // "self" | "delivery"
+  recipient   String?
+  address     String?
+  handoverDate String?
+  handoverTime String?
+  remarks     String?
+  // Workflow
+  status      OrderStatus @default(NEW)
+  createdAt   DateTime    @default(now())
+
+  @@index([status])
+  @@index([createdAt])
+}
+
+enum OrderStatus {
+  NEW
+  PREPARING
+  READY
+  DONE
+  CANCELLED
+}

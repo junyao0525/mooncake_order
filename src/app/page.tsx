@@ -1,6 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { createOrder } from "./actions";
+import type { OrderInput } from "@/lib/types";
 
 /* ------------------------------------------------------------------ */
 /* Product catalog — from the Angel Bakery 2026 Moon Cake Menu         */
@@ -124,6 +126,9 @@ export default function OrderFormPage() {
   });
   const [remarks, setRemarks] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [savedId, setSavedId] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const updateLine = (id: string, patch: Partial<LineState>) =>
     setLines((prev) => ({ ...prev, [id]: { ...prev[id], ...patch } }));
@@ -201,11 +206,48 @@ export default function OrderFormPage() {
     return lines.join("\n");
   };
 
-  const submitViaWhatsApp = () => {
-    if (orderedItems.length === 0) {
-      setSubmitted(true);
+  const buildOrderInput = (): OrderInput => ({
+    name: customer.name,
+    contact: customer.contact,
+    orderDate: customer.orderDate,
+    neededBy: customer.neededBy,
+    items: orderedItems.map(({ product, line }) => ({
+      productId: product.id,
+      name: product.name,
+      cn: product.cn,
+      flavour: line.flavour,
+      eggYolk: line.eggYolk,
+      qty: line.qty,
+      price: product.price,
+      remarks: line.remarks,
+    })),
+    subtotal,
+    deliveryFee: fee,
+    total,
+    payment: payment === "Others" ? `Others - ${paymentOther}` : payment,
+    fulfilment,
+    recipient: details.name,
+    address: details.address,
+    handoverDate: details.date,
+    handoverTime: details.time,
+    remarks,
+  });
+
+  const handleSubmit = async () => {
+    setSubmitted(true);
+    setSaveError(null);
+    if (orderedItems.length === 0) return;
+
+    setSaving(true);
+    const result = await createOrder(buildOrderInput());
+    setSaving(false);
+
+    if (!result.ok) {
+      setSaveError(result.error);
       return;
     }
+    setSavedId(result.id);
+    // Also open a pre-filled WhatsApp message to the bakery.
     const url = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(buildSummary())}`;
     window.open(url, "_blank");
   };
@@ -215,7 +257,7 @@ export default function OrderFormPage() {
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          submitViaWhatsApp();
+          handleSubmit();
         }}
         className="overflow-hidden rounded-3xl border-2 border-line bg-cream-soft shadow-[0_20px_60px_-25px_rgba(90,51,22,0.5)]"
       >
@@ -436,12 +478,31 @@ export default function OrderFormPage() {
                 Please add at least one item before submitting.
               </p>
             )}
-            <button
-              type="submit"
-              className="w-full rounded-full bg-red px-6 py-3.5 text-base font-bold text-cream-soft shadow-lg shadow-red/30 transition hover:brightness-110 active:scale-[0.99] sm:w-auto sm:px-12"
-            >
-              🥮 Send Order via WhatsApp
-            </button>
+            {saveError && (
+              <p className="text-sm font-medium text-red">{saveError}</p>
+            )}
+            {savedId ? (
+              <div className="w-full rounded-2xl border border-emerald-300 bg-emerald-50 p-4 text-center">
+                <p className="font-display text-lg font-bold text-emerald-700">
+                  ✅ Order received — thank you!
+                </p>
+                <p className="mt-1 text-sm text-emerald-700/80">
+                  Reference:{" "}
+                  <span className="font-mono font-semibold">
+                    {savedId.slice(-8).toUpperCase()}
+                  </span>
+                  . We&apos;ll confirm with you shortly.
+                </p>
+              </div>
+            ) : (
+              <button
+                type="submit"
+                disabled={saving}
+                className="w-full rounded-full bg-red px-6 py-3.5 text-base font-bold text-cream-soft shadow-lg shadow-red/30 transition hover:brightness-110 active:scale-[0.99] disabled:opacity-60 sm:w-auto sm:px-12"
+              >
+                {saving ? "Submitting…" : "🥮 Submit Order"}
+              </button>
+            )}
             <button
               type="button"
               onClick={() => window.print()}
@@ -734,6 +795,12 @@ function Footer() {
         <span>📷 angel_bakery666</span>
         <span>👍 Angel Bakery 天使牌 - Handmade</span>
       </div>
+      <a
+        href="/dashboard"
+        className="mt-3 inline-block text-[11px] text-brown/50 underline-offset-4 hover:underline"
+      >
+        Admin login
+      </a>
     </footer>
   );
 }
