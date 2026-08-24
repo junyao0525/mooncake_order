@@ -1,26 +1,40 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #fbf3e4;
+  --foreground: #4a2c15;
+
+  /* Angel Bakery mid-autumn palette */
+  --cream: #fbf3e4;
+  --cream-soft: #fdf8ef;
+  --brown: #7a4a24;
+  --brown-deep: #5a3316;
+  --accent: #b5651d;
+  --gold: #e8b04b;
+  --red: #c0392b;
+  --line: #d8b98a;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-cream: var(--cream);
+  --color-cream-soft: var(--cream-soft);
+  --color-brown: var(--brown);
+  --color-brown-deep: var(--brown-deep);
+  --color-accent: var(--accent);
+  --color-gold: var(--gold);
+  --color-red: var(--red);
+  --color-line: var(--line);
   --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --font-display: var(--font-display);
 }
 
 body {
-  background: var(--background);
+  background:
+    radial-gradient(1200px 600px at 100% -5%, rgba(232, 176, 75, 0.28), transparent 60%),
+    radial-gradient(1000px 500px at -5% 100%, rgba(232, 176, 75, 0.2), transparent 55%),
+    var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
 }
