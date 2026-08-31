@@ -94,11 +94,11 @@ const WHATSAPP_NUMBER = "60105202002"; // 010-5202002
 type LineState = {
   qty: number;
   flavour: string;
-  eggYolk: "with" | "without" | "";
+  eggYolk: "with" | "without";
   remarks: string;
 };
 
-const emptyLine: LineState = { qty: 0, flavour: "", eggYolk: "", remarks: "" };
+const emptyLine: LineState = { qty: 0, flavour: "", eggYolk: "with", remarks: "" };
 
 /* ------------------------------------------------------------------ */
 
@@ -144,6 +144,15 @@ export default function OrderFormPage() {
     [lines],
   );
 
+  // Ordered items whose product offers flavours but none has been chosen yet.
+  const missingFlavour = useMemo(
+    () =>
+      orderedItems.filter(
+        ({ product, line }) => product.flavours.length > 0 && !line.flavour,
+      ),
+    [orderedItems],
+  );
+
   const subtotal = useMemo(
     () =>
       orderedItems.reduce(
@@ -174,8 +183,9 @@ export default function OrderFormPage() {
     orderedItems.forEach(({ product, line }, i) => {
       const parts = [`${product.name} ${product.cn}`];
       if (line.flavour) parts.push(`(${line.flavour})`);
-      if (line.eggYolk === "with") parts.push("+蛋黄");
-      if (line.eggYolk === "without") parts.push("无蛋黄");
+      if (product.eggYolkOption) {
+        parts.push(line.eggYolk === "with" ? "+蛋黄" : "无蛋黄");
+      }
       const amt =
         product.price != null ? ` = ${currency(product.price * line.qty)}` : " = (TBC)";
       lines.push(
@@ -216,7 +226,7 @@ export default function OrderFormPage() {
       name: product.name,
       cn: product.cn,
       flavour: line.flavour,
-      eggYolk: line.eggYolk,
+      eggYolk: product.eggYolkOption ? line.eggYolk : "",
       qty: line.qty,
       price: product.price,
       remarks: line.remarks,
@@ -237,6 +247,7 @@ export default function OrderFormPage() {
     setSubmitted(true);
     setSaveError(null);
     if (orderedItems.length === 0) return;
+    if (missingFlavour.length > 0) return;
 
     setSaving(true);
     const result = await createOrder(buildOrderInput());
@@ -305,6 +316,12 @@ export default function OrderFormPage() {
                   currency={currency}
                   onQty={(q) => setQty(p.id, q)}
                   onChange={(patch) => updateLine(p.id, patch)}
+                  flavourMissing={
+                    submitted &&
+                    lines[p.id].qty > 0 &&
+                    p.flavours.length > 0 &&
+                    !lines[p.id].flavour
+                  }
                 />
               ))}
             </div>
@@ -331,12 +348,12 @@ export default function OrderFormPage() {
                       {line.flavour && (
                         <span className="text-brown/70"> · {line.flavour}</span>
                       )}
-                      {line.eggYolk === "with" && (
-                        <span className="text-red"> · +蛋黄</span>
-                      )}
-                      {line.eggYolk === "without" && (
-                        <span className="text-brown/70"> · 无蛋黄</span>
-                      )}
+                      {product.eggYolkOption &&
+                        (line.eggYolk === "with" ? (
+                          <span className="text-red"> · +蛋黄</span>
+                        ) : (
+                          <span className="text-brown/70"> · 无蛋黄</span>
+                        ))}
                       <span className="text-brown/70"> × {line.qty}</span>
                     </span>
                     <span className="whitespace-nowrap font-semibold text-brown-deep">
@@ -478,6 +495,12 @@ export default function OrderFormPage() {
                 Please add at least one item before submitting.
               </p>
             )}
+            {submitted && missingFlavour.length > 0 && (
+              <p className="text-sm font-medium text-red">
+                Please choose a flavour for{" "}
+                {missingFlavour.map(({ product }) => product.name).join(", ")}.
+              </p>
+            )}
             {saveError && (
               <p className="text-sm font-medium text-red">{saveError}</p>
             )}
@@ -560,12 +583,14 @@ function ProductRow({
   currency,
   onQty,
   onChange,
+  flavourMissing,
 }: {
   product: Product;
   line: LineState;
   currency: (n: number) => string;
   onQty: (q: number) => void;
   onChange: (patch: Partial<LineState>) => void;
+  flavourMissing: boolean;
 }) {
   const active = line.qty > 0;
   return (
@@ -605,7 +630,9 @@ function ProductRow({
           <select
             value={line.flavour}
             onChange={(e) => onChange({ flavour: e.target.value })}
-            className="rounded-lg border border-line bg-cream-soft px-2.5 py-1.5 text-sm text-brown-deep outline-none focus:border-accent"
+            className={`rounded-lg border bg-cream-soft px-2.5 py-1.5 text-sm text-brown-deep outline-none focus:border-accent ${
+              flavourMissing ? "border-red" : "border-line"
+            }`}
           >
             <option value="">口味 / Flavour…</option>
             {product.flavours.map((f) => (
@@ -624,7 +651,6 @@ function ProductRow({
             }
             className="rounded-lg border border-line bg-cream-soft px-2.5 py-1.5 text-sm text-brown-deep outline-none focus:border-accent"
           >
-            <option value="">蛋黄 / Egg Yolk…</option>
             <option value="with">要蛋黄 / With</option>
             <option value="without">不要蛋黄 / Without</option>
           </select>
@@ -795,12 +821,6 @@ function Footer() {
         <span>📷 angel_bakery666</span>
         <span>👍 Angel Bakery 天使牌 - Handmade</span>
       </div>
-      <a
-        href="/dashboard"
-        className="mt-3 inline-block text-[11px] text-brown/50 underline-offset-4 hover:underline"
-      >
-        Admin login
-      </a>
     </footer>
   );
 }
