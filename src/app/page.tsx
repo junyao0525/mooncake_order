@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import Image from "next/image";
+import { useEffect, useMemo, useState } from "react";
 import { createOrder } from "./actions";
 import type { OrderInput } from "@/lib/types";
 
@@ -17,6 +18,11 @@ type Product = {
   price: number | null; // null = price on request
   unit: string;
   flavours: string[];
+  // Photos served from /public/assets.
+  photos: string[];
+  // true = a box ships as a mix of all `flavours`; the customer may override
+  // it to a single flavour. false = the box is always one flavour.
+  mixed: boolean;
   eggYolkOption: boolean;
 };
 
@@ -26,10 +32,12 @@ const PRODUCTS: Product[] = [
     no: "01",
     name: "Shanghai Moon Cake",
     cn: "上海月饼",
-    desc: "80g · 一盒6粒 / Box of 6",
+    desc: "80g · 一盒6粒 / Box of 6 · 默认 mix 三个口味",
     price: 68,
     unit: "box",
     flavours: ["纯莲蓉 Pure Lotus", "翡翠 Jade", "白莲蓉 White Lotus"],
+    photos: ["/assets/shanghai_1.png", "/assets/shanghai_2.png"],
+    mixed: true,
     eggYolkOption: true,
   },
   {
@@ -37,10 +45,12 @@ const PRODUCTS: Product[] = [
     no: "02",
     name: "Salted Egg Yolk Pastry",
     cn: "蛋黄酥",
-    desc: "80g · 一盒6粒 / Box of 6",
+    desc: "80g · 一盒6粒 / Box of 6 · 默认 mix 三个口味",
     price: 68,
     unit: "box",
     flavours: ["纯莲蓉 Pure Lotus", "翡翠 Jade", "白莲蓉 White Lotus"],
+    photos: ["/assets/salted_1.png", "/assets/salted_2.png"],
+    mixed: true,
     eggYolkOption: true,
   },
   {
@@ -48,10 +58,12 @@ const PRODUCTS: Product[] = [
     no: "03",
     name: "3QMuaji Moon Cake",
     cn: "拉丝鸡丝咸蛋黄月饼",
-    desc: "100g+ · 一盒四粒 Mix / Box of 4",
+    desc: "100g+ · 一盒四粒 / Box of 4 · 默认 mix 三个口味",
     price: 60,
     unit: "box",
     flavours: ["豆沙 Red Bean", "翡翠 Jade", "白莲蓉 White Lotus"],
+    photos: ["/assets/3q_1.png", "/assets/3q_2.png"],
+    mixed: true,
     eggYolkOption: false,
   },
   {
@@ -59,10 +71,12 @@ const PRODUCTS: Product[] = [
     no: "04",
     name: "Vegetarian Pastry",
     cn: "素螺旋酥",
-    desc: "80g · 纯莲蓉 (无蛋黄 / No egg yolk)",
-    price: null,
+    desc: "80g · 一盒6粒 / Box of 6 · 只有一个口味 (无蛋黄 / No egg yolk)",
+    price: 68,
     unit: "box",
     flavours: ["纯莲蓉 Pure Lotus"],
+    photos: ["/assets/vege.png"],
+    mixed: false,
     eggYolkOption: false,
   },
   {
@@ -74,6 +88,12 @@ const PRODUCTS: Product[] = [
     price: 148,
     unit: "pc",
     flavours: [],
+    photos: [
+      "/assets/kuih_lapis_1.png",
+      "/assets/kuih_lapis_2.png",
+      "/assets/kuih_lapis_3.png",
+    ],
+    mixed: false,
     eggYolkOption: false,
   },
   {
@@ -85,6 +105,12 @@ const PRODUCTS: Product[] = [
     price: 88,
     unit: "pc",
     flavours: [],
+    photos: [
+      "/assets/kuih_lapis_1.png",
+      "/assets/kuih_lapis_2.png",
+      "/assets/kuih_lapis_3.png",
+    ],
+    mixed: false,
     eggYolkOption: false,
   },
 ];
@@ -98,7 +124,20 @@ type LineState = {
   remarks: string;
 };
 
-const emptyLine: LineState = { qty: 0, flavour: "", eggYolk: "with", remarks: "" };
+const emptyLine: LineState = {
+  qty: 0,
+  flavour: "",
+  eggYolk: "with",
+  remarks: "",
+};
+
+// What this line's flavour actually is. A blank `line.flavour` on a mixed
+// product means the default mixed box — not a missing answer.
+function flavourLabel(product: Product, line: LineState): string {
+  if (line.flavour) return line.flavour;
+  if (product.mixed) return `Mix ${product.flavours.length} 口味`;
+  return product.flavours[0] ?? "";
+}
 
 /* ------------------------------------------------------------------ */
 
@@ -110,8 +149,8 @@ export default function OrderFormPage() {
     neededBy: "",
   });
 
-  const [lines, setLines] = useState<Record<string, LineState>>(
-    () => Object.fromEntries(PRODUCTS.map((p) => [p.id, { ...emptyLine }])),
+  const [lines, setLines] = useState<Record<string, LineState>>(() =>
+    Object.fromEntries(PRODUCTS.map((p) => [p.id, { ...emptyLine }])),
   );
 
   const [payment, setPayment] = useState("");
@@ -144,27 +183,16 @@ export default function OrderFormPage() {
     [lines],
   );
 
-  // Ordered items whose product offers flavours but none has been chosen yet.
-  const missingFlavour = useMemo(
-    () =>
-      orderedItems.filter(
-        ({ product, line }) => product.flavours.length > 0 && !line.flavour,
-      ),
-    [orderedItems],
-  );
-
   const subtotal = useMemo(
     () =>
       orderedItems.reduce(
-        (sum, { product, line }) =>
-          sum + (product.price ?? 0) * line.qty,
+        (sum, { product, line }) => sum + (product.price ?? 0) * line.qty,
         0,
       ),
     [orderedItems],
   );
 
-  const fee =
-    fulfilment === "delivery" ? Number(deliveryFee) || 0 : 0;
+  const fee = fulfilment === "delivery" ? Number(deliveryFee) || 0 : 0;
   const total = subtotal + fee;
 
   const currency = (n: number) =>
@@ -182,15 +210,16 @@ export default function OrderFormPage() {
     lines.push("*Order:*");
     orderedItems.forEach(({ product, line }, i) => {
       const parts = [`${product.name} ${product.cn}`];
-      if (line.flavour) parts.push(`(${line.flavour})`);
+      const flav = flavourLabel(product, line);
+      if (flav) parts.push(`(${flav})`);
       if (product.eggYolkOption) {
         parts.push(line.eggYolk === "with" ? "+蛋黄" : "无蛋黄");
       }
       const amt =
-        product.price != null ? ` = ${currency(product.price * line.qty)}` : " = (TBC)";
-      lines.push(
-        `${i + 1}. ${parts.join(" ")} × ${line.qty}${amt}`,
-      );
+        product.price != null
+          ? ` = ${currency(product.price * line.qty)}`
+          : " = (TBC)";
+      lines.push(`${i + 1}. ${parts.join(" ")} × ${line.qty}${amt}`);
       if (line.remarks) lines.push(`   ↳ ${line.remarks}`);
     });
     lines.push("");
@@ -203,9 +232,7 @@ export default function OrderFormPage() {
         `*Payment:* ${payment === "Others" ? `Others - ${paymentOther}` : payment}`,
       );
     if (fulfilment)
-      lines.push(
-        `*${fulfilment === "self" ? "Self Collection" : "Delivery"}*`,
-      );
+      lines.push(`*${fulfilment === "self" ? "Self Collection" : "Delivery"}*`);
     if (fulfilment === "delivery" || details.address) {
       if (details.name) lines.push(`Recipient: ${details.name}`);
       if (details.address) lines.push(`Address: ${details.address}`);
@@ -225,7 +252,7 @@ export default function OrderFormPage() {
       productId: product.id,
       name: product.name,
       cn: product.cn,
-      flavour: line.flavour,
+      flavour: flavourLabel(product, line),
       eggYolk: product.eggYolkOption ? line.eggYolk : "",
       qty: line.qty,
       price: product.price,
@@ -247,7 +274,6 @@ export default function OrderFormPage() {
     setSubmitted(true);
     setSaveError(null);
     if (orderedItems.length === 0) return;
-    if (missingFlavour.length > 0) return;
 
     setSaving(true);
     const result = await createOrder(buildOrderInput());
@@ -308,7 +334,7 @@ export default function OrderFormPage() {
           <section>
             <SectionTitle>Select Your Mooncakes</SectionTitle>
             <div className="mt-4 space-y-4">
-              {PRODUCTS.map((p) => (
+              {PRODUCTS.map((p, i) => (
                 <ProductRow
                   key={p.id}
                   product={p}
@@ -316,12 +342,7 @@ export default function OrderFormPage() {
                   currency={currency}
                   onQty={(q) => setQty(p.id, q)}
                   onChange={(patch) => updateLine(p.id, patch)}
-                  flavourMissing={
-                    submitted &&
-                    lines[p.id].qty > 0 &&
-                    p.flavours.length > 0 &&
-                    !lines[p.id].flavour
-                  }
+                  photoDelay={i * 500}
                 />
               ))}
             </div>
@@ -345,8 +366,11 @@ export default function OrderFormPage() {
                       <span className="font-semibold">
                         {product.name} {product.cn}
                       </span>
-                      {line.flavour && (
-                        <span className="text-brown/70"> · {line.flavour}</span>
+                      {flavourLabel(product, line) && (
+                        <span className="text-brown/70">
+                          {" "}
+                          · {flavourLabel(product, line)}
+                        </span>
                       )}
                       {product.eggYolkOption &&
                         (line.eggYolk === "with" ? (
@@ -495,12 +519,6 @@ export default function OrderFormPage() {
                 Please add at least one item before submitting.
               </p>
             )}
-            {submitted && missingFlavour.length > 0 && (
-              <p className="text-sm font-medium text-red">
-                Please choose a flavour for{" "}
-                {missingFlavour.map(({ product }) => product.name).join(", ")}.
-              </p>
-            )}
             {saveError && (
               <p className="text-sm font-medium text-red">{saveError}</p>
             )}
@@ -583,97 +601,192 @@ function ProductRow({
   currency,
   onQty,
   onChange,
-  flavourMissing,
+  photoDelay,
 }: {
   product: Product;
   line: LineState;
   currency: (n: number) => string;
   onQty: (q: number) => void;
   onChange: (patch: Partial<LineState>) => void;
-  flavourMissing: boolean;
+  photoDelay: number;
 }) {
   const active = line.qty > 0;
   return (
     <div
       className={`rounded-2xl border p-4 transition ${
-        active
-          ? "border-accent bg-cream shadow-sm"
-          : "border-line bg-cream/40"
+        active ? "border-accent bg-cream shadow-sm" : "border-line bg-cream/40"
       }`}
     >
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-brown text-[11px] font-bold text-cream-soft">
-              {product.no}
-            </span>
-            <h3 className="font-semibold text-brown-deep">
-              {product.name}{" "}
-              <span className="text-brown/80">{product.cn}</span>
-            </h3>
-          </div>
-          <p className="mt-1 pl-8 text-xs text-brown/70">{product.desc}</p>
-        </div>
-        <div className="text-right">
-          <div className="font-display text-lg font-bold text-red">
-            {product.price != null ? currency(product.price) : "TBC"}
-          </div>
-          <div className="text-[10px] uppercase tracking-wide text-brown/60">
-            per {product.unit}
-          </div>
-        </div>
-      </div>
-
-      {/* controls */}
-      <div className="mt-3 flex flex-wrap items-center gap-3 pl-8">
-        {product.flavours.length > 0 && (
-          <select
-            value={line.flavour}
-            onChange={(e) => onChange({ flavour: e.target.value })}
-            className={`rounded-lg border bg-cream-soft px-2.5 py-1.5 text-sm text-brown-deep outline-none focus:border-accent ${
-              flavourMissing ? "border-red" : "border-line"
-            }`}
-          >
-            <option value="">口味 / Flavour…</option>
-            {product.flavours.map((f) => (
-              <option key={f} value={f}>
-                {f}
-              </option>
-            ))}
-          </select>
-        )}
-
-        {product.eggYolkOption && (
-          <select
-            value={line.eggYolk}
-            onChange={(e) =>
-              onChange({ eggYolk: e.target.value as LineState["eggYolk"] })
-            }
-            className="rounded-lg border border-line bg-cream-soft px-2.5 py-1.5 text-sm text-brown-deep outline-none focus:border-accent"
-          >
-            <option value="with">要蛋黄 / With</option>
-            <option value="without">不要蛋黄 / Without</option>
-          </select>
-        )}
-
-        <QtyStepper qty={line.qty} onQty={onQty} />
-
-        {active && product.price != null && (
-          <span className="ml-auto text-sm font-semibold text-brown-deep">
-            = {currency(product.price * line.qty)}
-          </span>
-        )}
-      </div>
-
-      {active && (
-        <div className="mt-2 pl-8">
-          <input
-            type="text"
-            value={line.remarks}
-            onChange={(e) => onChange({ remarks: e.target.value })}
-            className="w-full rounded-lg border border-line bg-cream-soft px-2.5 py-1.5 text-sm outline-none focus:border-accent"
-            placeholder="Remarks for this item (optional)"
+      <div className="flex items-start gap-3">
+        {product.photos.length > 0 && (
+          <ProductPhotos
+            photos={product.photos}
+            alt={`${product.name} ${product.cn}`}
+            delay={photoDelay}
           />
+        )}
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-brown text-[11px] font-bold text-cream-soft">
+                  {product.no}
+                </span>
+                <h3 className="font-semibold text-brown-deep">
+                  {product.name}{" "}
+                  <span className="text-brown/80">{product.cn}</span>
+                </h3>
+              </div>
+              <p className="mt-1 pl-8 text-xs text-brown/70">{product.desc}</p>
+            </div>
+            <div className="text-right">
+              <div className="font-display text-lg font-bold text-red">
+                {product.price != null ? currency(product.price) : "TBC"}
+              </div>
+              <div className="text-[10px] uppercase tracking-wide text-brown/60">
+                per {product.unit}
+              </div>
+            </div>
+          </div>
+
+          {/* controls */}
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            {product.mixed ? (
+              <select
+                value={line.flavour}
+                onChange={(e) => onChange({ flavour: e.target.value })}
+                className="rounded-lg border border-line bg-cream-soft px-2.5 py-1.5 text-sm text-brown-deep outline-none focus:border-accent"
+              >
+                <option value="">
+                  Mix {product.flavours.length} 口味（默认）
+                </option>
+                {product.flavours.map((f) => (
+                  <option key={f} value={f}>
+                    只要 {f}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              product.flavours.length === 1 && (
+                <span className="rounded-lg border border-line bg-cream-soft px-2.5 py-1.5 text-sm text-brown-deep">
+                  {product.flavours[0]}
+                </span>
+              )
+            )}
+
+            {product.eggYolkOption && (
+              <select
+                value={line.eggYolk}
+                onChange={(e) =>
+                  onChange({ eggYolk: e.target.value as LineState["eggYolk"] })
+                }
+                className="rounded-lg border border-line bg-cream-soft px-2.5 py-1.5 text-sm text-brown-deep outline-none focus:border-accent"
+              >
+                <option value="with">要蛋黄 / With</option>
+                <option value="without">不要蛋黄 / Without</option>
+              </select>
+            )}
+
+            <QtyStepper qty={line.qty} onQty={onQty} />
+
+            {active && product.price != null && (
+              <span className="ml-auto text-sm font-semibold text-brown-deep">
+                = {currency(product.price * line.qty)}
+              </span>
+            )}
+          </div>
+
+          {active && (
+            <div className="mt-2">
+              <input
+                type="text"
+                value={line.remarks}
+                onChange={(e) => onChange({ remarks: e.target.value })}
+                className="w-full rounded-lg border border-line bg-cream-soft px-2.5 py-1.5 text-sm outline-none focus:border-accent"
+                placeholder={
+                  product.mixed
+                    ? "备注：想要单一口味请注明 / Note a single flavour here"
+                    : "Remarks for this item (optional)"
+                }
+              />
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const PHOTO_INTERVAL = 3000;
+
+function ProductPhotos({
+  photos,
+  alt,
+  delay,
+}: {
+  photos: string[];
+  alt: string;
+  delay: number;
+}) {
+  const [idx, setIdx] = useState(0);
+  const [paused, setPaused] = useState(false);
+
+  // Auto-advance. `idx` is deliberately not a dependency — the functional
+  // setter already reads the latest value, and re-running here would restart
+  // the stagger on every tick. Re-runs on `paused` so hovering holds the photo.
+  useEffect(() => {
+    if (photos.length < 2 || paused) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+    let interval: ReturnType<typeof setInterval>;
+    const advance = () => setIdx((i) => (i + 1) % photos.length);
+    // Stagger only the first tick so the rows don't all flip on the same frame.
+    const start = setTimeout(() => {
+      advance();
+      interval = setInterval(advance, PHOTO_INTERVAL);
+    }, PHOTO_INTERVAL + delay);
+
+    return () => {
+      clearTimeout(start);
+      clearInterval(interval);
+    };
+  }, [photos.length, paused, delay]);
+
+  return (
+    <div
+      className="shrink-0"
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+    >
+      <div className="relative h-20 w-20 overflow-hidden rounded-xl border border-line sm:h-24 sm:w-24">
+        {photos.map((src, i) => (
+          <Image
+            key={src}
+            src={src}
+            alt={i === 0 ? alt : ""}
+            width={192}
+            height={192}
+            priority={i === 0}
+            className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-700 ${
+              i === idx ? "opacity-100" : "opacity-0"
+            }`}
+          />
+        ))}
+      </div>
+      {photos.length > 1 && (
+        <div className="mt-1.5 flex justify-center gap-1.5">
+          {photos.map((src, i) => (
+            <button
+              key={src}
+              type="button"
+              onClick={() => setIdx(i)}
+              aria-label={`${alt} — photo ${i + 1}`}
+              aria-current={i === idx}
+              className={`h-1.5 w-1.5 rounded-full transition ${
+                i === idx ? "bg-accent" : "bg-line hover:bg-brown/40"
+              }`}
+            />
+          ))}
         </div>
       )}
     </div>

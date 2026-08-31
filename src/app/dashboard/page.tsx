@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 import { logout } from "../actions";
@@ -37,12 +38,12 @@ export default async function DashboardPage() {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <a
+          <Link
             href="/"
             className="rounded-full border border-line px-4 py-2 text-sm font-medium text-brown hover:bg-cream"
           >
             + New Order Form
-          </a>
+          </Link>
           <form action={logout}>
             <button
               type="submit"

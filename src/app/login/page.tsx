@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState } from "react";
 import { login, type LoginState } from "../actions";
 
@@ -61,12 +62,12 @@ export default function LoginPage() {
           </button>
         </form>
       </div>
-      <a
+      <Link
         href="/"
         className="mt-4 text-center text-sm text-brown underline-offset-4 hover:underline"
       >
         ← Back to order form
-      </a>
+      </Link>
     </main>
   );
 }
