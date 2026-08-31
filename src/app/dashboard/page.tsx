@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import { getAgent } from "@/lib/agents";
 import { requireAdmin } from "@/lib/auth";
 import { logout } from "../actions";
 import StatusSelect from "./StatusSelect";
@@ -33,9 +34,7 @@ export default async function DashboardPage() {
           <h1 className="font-display text-2xl font-extrabold text-red sm:text-3xl">
             Orders Dashboard
           </h1>
-          <p className="text-sm text-brown/70">
-            Signed in as {session.sub}
-          </p>
+          <p className="text-sm text-brown/70">Signed in as {session.sub}</p>
         </div>
         <div className="flex items-center gap-3">
           <Link
@@ -59,16 +58,11 @@ export default async function DashboardPage() {
       <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
         <Stat label="Total Orders" value={String(orders.length)} />
         <Stat label="Open Orders" value={String(openOrders.length)} />
-        <Stat
-          label="Revenue (excl. cancelled)"
-          value={currency(revenue)}
-        />
+        <Stat label="Revenue (excl. cancelled)" value={currency(revenue)} />
         <Stat
           label="Latest"
           value={
-            orders[0]
-              ? orders[0].createdAt.toLocaleDateString("en-MY")
-              : "—"
+            orders[0] ? orders[0].createdAt.toLocaleDateString("en-MY") : "—"
           }
         />
       </div>
@@ -85,6 +79,7 @@ export default async function DashboardPage() {
               <thead>
                 <tr className="border-b border-line bg-brown text-left text-cream-soft">
                   <Th>Date</Th>
+                  <Th>Agent</Th>
                   <Th>Customer</Th>
                   <Th>Items</Th>
                   <Th>Needed By</Th>
@@ -103,6 +98,11 @@ export default async function DashboardPage() {
                     >
                       <Td className="whitespace-nowrap text-brown/70">
                         {o.createdAt.toLocaleDateString("en-MY")}
+                      </Td>
+                      <Td className="whitespace-nowrap">
+                        <span className="rounded-full border border-line px-2 py-0.5 text-xs font-medium text-brown">
+                          {getAgent(o.agent)?.name ?? o.agent ?? "—"}
+                        </span>
                       </Td>
                       <Td>
                         <div className="font-semibold text-brown-deep">
@@ -190,7 +190,9 @@ function Th({
   className?: string;
 }) {
   return (
-    <th className={`px-4 py-3 text-xs font-bold uppercase tracking-wide ${className}`}>
+    <th
+      className={`px-4 py-3 text-xs font-bold uppercase tracking-wide ${className}`}
+    >
       {children}
     </th>
   );

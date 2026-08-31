@@ -12,6 +12,7 @@ import {
   sessionCookieOptions,
 } from "@/lib/session";
 import type { OrderInput, OrderStatus } from "@/lib/types";
+import { getAgent, DEFAULT_AGENT } from "@/lib/agents";
 import { ORDER_STATUSES } from "@/lib/types";
 
 /* ----------------------------- Auth ----------------------------- */
@@ -73,9 +74,14 @@ export async function createOrder(
     return { ok: false, error: "Please add at least one item." };
   }
 
+  // The slug arrives from the client, so accept it only if it names a real
+  // agent; anything else falls back to the default rather than being stored.
+  const agent = getAgent(input.agent)?.slug ?? DEFAULT_AGENT;
+
   try {
     const order = await prisma.order.create({
       data: {
+        agent,
         name: input.name.trim(),
         contact: input.contact.trim(),
         orderDate: input.orderDate || null,

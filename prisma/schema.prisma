@@ -18,6 +18,8 @@ datasource db {
 
 model Order {
   id          String   @id @default(cuid())
+  // Which agent's link the order came through (slug from src/lib/agents.ts).
+  agent       String?
   // Customer info
   name        String
   contact     String
@@ -41,6 +43,7 @@ model Order {
   status      OrderStatus @default(NEW)
   createdAt   DateTime    @default(now())
 
+  @@index([agent])
   @@index([status])
   @@index([createdAt])
 }

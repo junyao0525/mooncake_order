@@ -10,6 +10,8 @@ export type OrderItemInput = {
 };
 
 export type OrderInput = {
+  /** Slug of the agent whose link the order came through. */
+  agent: string;
   name: string;
   contact: string;
   orderDate: string;
