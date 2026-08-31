@@ -7,8 +7,9 @@ admin-only **`/dashboard`** protected by **login**. Follow these steps once.
 
 1. Push this repo to GitHub and import it into **Vercel** (New Project → pick the repo).
 2. In the Vercel project → **Storage** → **Create Database** → **Postgres** (Neon).
-3. After it's created, open the **`.env.local`** tab and copy the **`DATABASE_URL`**
-   (use the pooled connection string).
+3. After it's created, open the **`.env.local`** tab (Neon's own label) and copy
+   both `DATABASE_URL` (pooled, host contains `-pooler`) and
+   `DATABASE_URL_UNPOOLED` — the latter becomes `DIRECT_URL` here.
 
 > Prefer to develop locally first? Create a free DB at https://neon.tech and copy its connection string.
 
@@ -17,14 +18,20 @@ admin-only **`/dashboard`** protected by **login**. Follow these steps once.
 Copy the example file and fill it in:
 
 ```bash
-cp .env.example .env.local
+cp .env.example .env
 ```
 
-Then set the three values in `.env.local`:
+Use **`.env`**, not `.env.local`: the Prisma CLI only auto-loads `.env`, so
+`npm run db:push` fails to see a `DATABASE_URL` that lives in `.env.local`.
+Next.js loads both, so a single `.env` keeps the app and Prisma in sync.
+Both are gitignored.
+
+Then set the values in `.env`:
 
 | Variable         | What to put                                                        |
 | ---------------- | ------------------------------------------------------------------ |
-| `DATABASE_URL`   | The Postgres connection string from step 1                         |
+| `DATABASE_URL`   | The **pooled** Postgres connection string from step 1               |
+| `DIRECT_URL`     | The **unpooled** string for the same DB — required by Prisma        |
 | `ADMIN_EMAIL`    | The email you'll log into the dashboard with                       |
 | `ADMIN_PASSWORD` | A strong password for the dashboard                                |
 | `AUTH_SECRET`    | A random string — generate with `openssl rand -base64 32`          |
