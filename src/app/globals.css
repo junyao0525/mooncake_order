@@ -38,3 +38,27 @@ body {
   color: var(--foreground);
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
 }
+
+/* Scrolling notice band. The track holds two identical halves, so travelling
+   exactly one half lands the second where the first began — the loop has no
+   visible seam and no JavaScript. */
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-marquee {
+  animation: marquee 30s linear infinite;
+}
+
+/* Motion here is decoration, not information — the same text is on screen
+   either way, so honour the OS setting and simply stop. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-marquee {
+    animation: none;
+  }
+}

@@ -1,10 +1,10 @@
 "use client";
 
+import type { Agent } from "@/lib/agents";
+import type { OrderInput } from "@/lib/types";
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import { createOrder } from "./actions";
-import type { OrderInput } from "@/lib/types";
-import type { Agent } from "@/lib/agents";
 
 /* ------------------------------------------------------------------ */
 /* Product catalog — from the Angel Bakery 2026 Moon Cake Menu         */
@@ -314,10 +314,9 @@ export default function OrderForm({ agent }: { agent: Agent }) {
           e.preventDefault();
           handleSubmit();
         }}
-        className="overflow-hidden rounded-3xl border-2 border-line bg-cream-soft shadow-[0_20px_60px_-25px_rgba(90,51,22,0.5)]"
-      >
+        className="overflow-hidden rounded-3xl border-2 border-line bg-cream-soft shadow-[0_20px_60px_-25px_rgba(90,51,22,0.5)]">
         <Header />
-        <Banners />
+        <TopBanner />
 
         <div className="space-y-8 p-5 sm:p-8">
           {/* Customer info */}
@@ -379,8 +378,7 @@ export default function OrderForm({ agent }: { agent: Agent }) {
                 {orderedItems.map(({ product, line }) => (
                   <li
                     key={product.id}
-                    className="flex items-start justify-between gap-3 py-2 text-sm"
-                  >
+                    className="flex items-start justify-between gap-3 py-2 text-sm">
                     <span className="text-brown-deep">
                       <span className="font-semibold">
                         {product.name} {product.cn}
@@ -410,9 +408,15 @@ export default function OrderForm({ agent }: { agent: Agent }) {
             )}
 
             <div className="mt-4 space-y-1 border-t border-line pt-3 text-sm">
-              <Row label="Subtotal" value={currency(subtotal)} />
+              <Row
+                label="Subtotal"
+                value={currency(subtotal)}
+              />
               {fulfilment === "delivery" && (
-                <Row label="Delivery Fee" value={currency(fee)} />
+                <Row
+                  label="Delivery Fee"
+                  value={currency(fee)}
+                />
               )}
               <div className="mt-2 flex items-center justify-between rounded-xl bg-brown px-4 py-3 text-cream-soft">
                 <span className="font-display text-lg font-bold tracking-wide">
@@ -558,8 +562,7 @@ export default function OrderForm({ agent }: { agent: Agent }) {
                     href={waUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="mt-3 inline-block rounded-full bg-emerald-600 px-6 py-2.5 text-sm font-bold text-cream-soft shadow hover:brightness-110"
-                  >
+                    className="mt-3 inline-block rounded-full bg-emerald-600 px-6 py-2.5 text-sm font-bold text-cream-soft shadow hover:brightness-110">
                     💬 Send to {agent.name} on WhatsApp
                   </a>
                 )}
@@ -568,21 +571,14 @@ export default function OrderForm({ agent }: { agent: Agent }) {
               <button
                 type="submit"
                 disabled={saving}
-                className="w-full rounded-full bg-red px-6 py-3.5 text-base font-bold text-cream-soft shadow-lg shadow-red/30 transition hover:brightness-110 active:scale-[0.99] disabled:opacity-60 sm:w-auto sm:px-12"
-              >
+                className="w-full rounded-full bg-red px-6 py-3.5 text-base font-bold text-cream-soft shadow-lg shadow-red/30 transition hover:brightness-110 active:scale-[0.99] disabled:opacity-60 sm:w-auto sm:px-12">
                 {saving ? "Submitting…" : "🥮 Submit Order"}
               </button>
             )}
-            <button
-              type="button"
-              onClick={() => window.print()}
-              className="text-sm font-medium text-brown underline-offset-4 hover:underline"
-            >
-              or print / save as PDF
-            </button>
           </div>
         </div>
 
+        <BottomBanner />
         <Footer />
       </form>
     </main>
@@ -630,35 +626,65 @@ function Header() {
   );
 }
 
-// This year's boxes, shown between the header and the order list so the
-// customer sees what they are ordering before picking quantities. Full
-// bleed: the form already clips to its rounded corners.
-function Banners() {
+// Both banners are full bleed — the form already clips to its rounded
+// corners. The slot is the 4xl container width (896px), never the full
+// source, so the sizes hints keep phones off the 3840w variant.
+const BANNER_SIZES = "(min-width: 640px) 896px, 100vw";
+
+const NOTICE = "2026 中秋礼盒 限量发售 售完无补✨";
+
+// The limited-release notice and this year's boxes, directly under the
+// header.
+function TopBanner() {
   return (
-    <section className="grid grid-cols-1 gap-1 sm:grid-cols-3">
-      <div className="relative aspect-[4/3] sm:col-span-2 sm:aspect-auto sm:h-64">
-        <Image
-          src="/assets/banner_2.jpeg"
-          alt="An Angel Bakery gift box of 黄酥 salted egg yolk pastries, with a Mid-Autumn greeting card and matching gift bag"
-          fill
-          // Sits just under the header, so it is the LCP image on most screens.
-          priority
-          // The slot is ~600px at the 4xl container width, never the full
-          // 1280px of the source.
-          sizes="(min-width: 640px) 600px, 100vw"
-          className="object-cover"
-        />
+    <>
+      <div className="overflow-hidden bg-brown-deep py-2.5">
+        {/* The visible track is decorative repetition, so it is hidden from
+            assistive tech and the notice is announced once instead of ten
+            times. */}
+        <span className="sr-only">{NOTICE}</span>
+        <div aria-hidden className="flex w-max animate-marquee">
+          {[0, 1].map((half) => (
+            <div key={half} className="flex shrink-0">
+              {Array.from({ length: 5 }, (_, i) => (
+                <span
+                  key={i}
+                  className="whitespace-nowrap px-8 font-display text-sm font-bold tracking-wide text-cream-soft sm:text-base"
+                >
+                  {NOTICE}
+                </span>
+              ))}
+            </div>
+          ))}
+        </div>
       </div>
-      <div className="relative aspect-[4/3] sm:aspect-auto sm:h-64">
+      <div className="relative aspect-[4/3] sm:aspect-auto sm:h-72">
         <Image
           src="/assets/banner_1.jpeg"
           alt="Rows of this year's pink Mid-Autumn boxes printed with the Angel Bakery 天使牌 logo"
           fill
-          sizes="(min-width: 640px) 300px, 100vw"
+          // Top of the page now, so it is the LCP image on most screens.
+          priority
+          sizes={BANNER_SIZES}
           className="object-cover"
         />
       </div>
-    </section>
+    </>
+  );
+}
+
+// Sits below the order list, between the submit button and the footer.
+function BottomBanner() {
+  return (
+    <div className="relative aspect-[4/3] sm:aspect-auto sm:h-72">
+      <Image
+        src="/assets/banner_2.jpeg"
+        alt="An Angel Bakery gift box of 黄酥 salted egg yolk pastries, with a Mid-Autumn greeting card and matching gift bag"
+        fill
+        sizes={BANNER_SIZES}
+        className="object-cover"
+      />
+    </div>
   );
 }
 
@@ -682,8 +708,7 @@ function ProductRow({
     <div
       className={`rounded-2xl border p-4 transition ${
         active ? "border-accent bg-cream shadow-sm" : "border-line bg-cream/40"
-      }`}
-    >
+      }`}>
       <div className="flex items-start gap-3">
         {product.photos.length > 0 && (
           <ProductPhotos
@@ -722,13 +747,14 @@ function ProductRow({
               <select
                 value={line.flavour}
                 onChange={(e) => onChange({ flavour: e.target.value })}
-                className="rounded-lg border border-line bg-cream-soft px-2.5 py-1.5 text-sm text-brown-deep outline-none focus:border-accent"
-              >
+                className="rounded-lg border border-line bg-cream-soft px-2.5 py-1.5 text-sm text-brown-deep outline-none focus:border-accent">
                 <option value="">
                   Mix {product.flavours.length} 口味（默认）
                 </option>
                 {product.flavours.map((f) => (
-                  <option key={f} value={f}>
+                  <option
+                    key={f}
+                    value={f}>
                     只要 {f}
                   </option>
                 ))}
@@ -747,14 +773,16 @@ function ProductRow({
                 onChange={(e) =>
                   onChange({ eggYolk: e.target.value as LineState["eggYolk"] })
                 }
-                className="rounded-lg border border-line bg-cream-soft px-2.5 py-1.5 text-sm text-brown-deep outline-none focus:border-accent"
-              >
+                className="rounded-lg border border-line bg-cream-soft px-2.5 py-1.5 text-sm text-brown-deep outline-none focus:border-accent">
                 <option value="with">要蛋黄 / With</option>
                 <option value="without">不要蛋黄 / Without</option>
               </select>
             )}
 
-            <QtyStepper qty={line.qty} onQty={onQty} />
+            <QtyStepper
+              qty={line.qty}
+              onQty={onQty}
+            />
 
             {active && product.price != null && (
               <span className="ml-auto text-sm font-semibold text-brown-deep">
@@ -823,8 +851,7 @@ function ProductPhotos({
     <div
       className="shrink-0"
       onMouseEnter={() => setPaused(true)}
-      onMouseLeave={() => setPaused(false)}
-    >
+      onMouseLeave={() => setPaused(false)}>
       <div className="relative h-20 w-20 overflow-hidden rounded-xl border border-line sm:h-24 sm:w-24">
         {photos.map((src, i) => (
           <Image
@@ -874,8 +901,7 @@ function QtyStepper({
         onClick={() => onQty(qty - 1)}
         className="grid h-8 w-8 place-items-center text-lg text-brown transition hover:bg-line/40 disabled:opacity-30"
         disabled={qty <= 0}
-        aria-label="Decrease quantity"
-      >
+        aria-label="Decrease quantity">
         −
       </button>
       <input
@@ -890,8 +916,7 @@ function QtyStepper({
         type="button"
         onClick={() => onQty(qty + 1)}
         className="grid h-8 w-8 place-items-center text-lg text-brown transition hover:bg-line/40"
-        aria-label="Increase quantity"
-      >
+        aria-label="Increase quantity">
         +
       </button>
     </div>
@@ -1002,8 +1027,7 @@ function Footer() {
           href="https://www.instagram.com/angel_bakery666"
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 underline-offset-4 transition hover:text-red hover:underline"
-        >
+          className="inline-flex items-center gap-1.5 underline-offset-4 transition hover:text-red hover:underline">
           <InstagramIcon />
           angel_bakery666
         </a>
@@ -1011,8 +1035,7 @@ function Footer() {
           href="https://www.facebook.com/CHILISANGEL"
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 underline-offset-4 transition hover:text-red hover:underline"
-        >
+          className="inline-flex items-center gap-1.5 underline-offset-4 transition hover:text-red hover:underline">
           <FacebookIcon />
           Angel Bakery 天使牌 - Handmade
         </a>
@@ -1030,8 +1053,7 @@ function InstagramIcon() {
       viewBox="0 0 24 24"
       aria-hidden="true"
       focusable="false"
-      className="h-3.5 w-3.5 shrink-0 fill-current"
-    >
+      className="h-3.5 w-3.5 shrink-0 fill-current">
       <path d="M12 0C8.74 0 8.333.015 7.053.072 5.775.132 4.905.333 4.14.63c-.789.306-1.459.717-2.126 1.384S.935 3.35.63 4.14C.333 4.905.131 5.775.072 7.053.012 8.333 0 8.74 0 12s.015 3.667.072 4.947c.06 1.277.261 2.148.558 2.913.306.788.717 1.459 1.384 2.126.667.666 1.336 1.079 2.126 1.384.766.296 1.636.499 2.913.558C8.333 23.988 8.74 24 12 24s3.667-.015 4.947-.072c1.277-.06 2.148-.262 2.913-.558.788-.306 1.459-.718 2.126-1.384.666-.667 1.079-1.335 1.384-2.126.296-.765.499-1.636.558-2.913.06-1.28.072-1.687.072-4.947s-.015-3.667-.072-4.947c-.06-1.277-.262-2.149-.558-2.913-.306-.789-.718-1.459-1.384-2.126C21.319 1.347 20.651.935 19.86.63c-.765-.297-1.636-.499-2.913-.558C15.667.012 15.26 0 12 0zm0 2.16c3.203 0 3.585.016 4.85.071 1.17.055 1.805.249 2.227.415.562.217.96.477 1.382.896.419.42.679.819.896 1.381.164.422.36 1.057.413 2.227.057 1.266.07 1.646.07 4.85s-.015 3.585-.074 4.85c-.061 1.17-.256 1.805-.421 2.227-.224.562-.479.96-.899 1.382-.419.419-.824.679-1.38.896-.42.164-1.065.36-2.235.413-1.274.057-1.649.07-4.859.07-3.211 0-3.586-.015-4.859-.074-1.171-.061-1.816-.256-2.236-.421-.569-.224-.96-.479-1.379-.899-.421-.419-.69-.824-.9-1.38-.165-.42-.359-1.065-.42-2.235-.045-1.26-.061-1.649-.061-4.844 0-3.196.016-3.586.061-4.861.061-1.17.255-1.814.42-2.234.21-.57.479-.96.9-1.381.419-.419.81-.689 1.379-.898.42-.166 1.051-.361 2.221-.421 1.275-.045 1.65-.06 4.859-.06l.045.03zm0 3.678c-3.405 0-6.162 2.76-6.162 6.162 0 3.405 2.76 6.162 6.162 6.162 3.405 0 6.162-2.76 6.162-6.162 0-3.405-2.76-6.162-6.162-6.162zM12 16c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4zm7.846-10.405c0 .795-.646 1.44-1.44 1.44-.795 0-1.44-.646-1.44-1.44 0-.794.646-1.439 1.44-1.439.793-.001 1.44.645 1.44 1.439z" />
     </svg>
   );
@@ -1043,8 +1065,7 @@ function FacebookIcon() {
       viewBox="0 0 24 24"
       aria-hidden="true"
       focusable="false"
-      className="h-3.5 w-3.5 shrink-0 fill-current"
-    >
+      className="h-3.5 w-3.5 shrink-0 fill-current">
       <path d="M9.101 23.691v-7.98H6.627v-3.667h2.474v-1.58c0-4.085 1.848-5.978 5.858-5.978.401 0 .955.042 1.468.103a8.68 8.68 0 0 1 1.141.195v3.325a8.623 8.623 0 0 0-.653-.036 26.805 26.805 0 0 0-.733-.009c-.707 0-1.259.096-1.675.309a1.686 1.686 0 0 0-.679.622c-.258.42-.374.995-.374 1.752v1.297h3.919l-.386 2.103-.287 1.564h-3.246v8.245C19.396 23.238 24 18.179 24 12.044c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.628 3.874 10.35 9.101 11.647Z" />
     </svg>
   );
