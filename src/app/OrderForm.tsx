@@ -317,6 +317,7 @@ export default function OrderForm({ agent }: { agent: Agent }) {
         className="overflow-hidden rounded-3xl border-2 border-line bg-cream-soft shadow-[0_20px_60px_-25px_rgba(90,51,22,0.5)]"
       >
         <Header />
+        <Banners />
 
         <div className="space-y-8 p-5 sm:p-8">
           {/* Customer info */}
@@ -626,6 +627,38 @@ function Header() {
         100% 全手工制作 · 无添加任何防腐剂 · 真材实料 · 低糖健康
       </p>
     </header>
+  );
+}
+
+// This year's boxes, shown between the header and the order list so the
+// customer sees what they are ordering before picking quantities. Full
+// bleed: the form already clips to its rounded corners.
+function Banners() {
+  return (
+    <section className="grid grid-cols-1 gap-1 sm:grid-cols-3">
+      <div className="relative aspect-[4/3] sm:col-span-2 sm:aspect-auto sm:h-64">
+        <Image
+          src="/assets/banner_2.jpeg"
+          alt="An Angel Bakery gift box of 黄酥 salted egg yolk pastries, with a Mid-Autumn greeting card and matching gift bag"
+          fill
+          // Sits just under the header, so it is the LCP image on most screens.
+          priority
+          // The slot is ~600px at the 4xl container width, never the full
+          // 1280px of the source.
+          sizes="(min-width: 640px) 600px, 100vw"
+          className="object-cover"
+        />
+      </div>
+      <div className="relative aspect-[4/3] sm:aspect-auto sm:h-64">
+        <Image
+          src="/assets/banner_1.jpeg"
+          alt="Rows of this year's pink Mid-Autumn boxes printed with the Angel Bakery 天使牌 logo"
+          fill
+          sizes="(min-width: 640px) 300px, 100vw"
+          className="object-cover"
+        />
+      </div>
+    </section>
   );
 }
 
