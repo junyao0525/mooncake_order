@@ -167,6 +167,7 @@ export default function OrderForm({ agent }: { agent: Agent }) {
   const [saving, setSaving] = useState(false);
   const [savedId, setSavedId] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [waUrl, setWaUrl] = useState<string | null>(null);
 
   const updateLine = (id: string, patch: Partial<LineState>) =>
     setLines((prev) => ({ ...prev, [id]: { ...prev[id], ...patch } }));
@@ -275,17 +276,34 @@ export default function OrderForm({ agent }: { agent: Agent }) {
     setSaveError(null);
     if (orderedItems.length === 0) return;
 
+    // Built before the await: once the server round-trip finishes the
+    // browser may have dropped user activation, and window.open would be
+    // blocked without saying so.
+    const url = `https://wa.me/${agent.whatsapp}?text=${encodeURIComponent(buildSummary())}`;
+
     setSaving(true);
-    const result = await createOrder(buildOrderInput());
-    setSaving(false);
+    let result: Awaited<ReturnType<typeof createOrder>>;
+    try {
+      result = await createOrder(buildOrderInput());
+    } catch (e) {
+      // Without this the rejection escapes and the button sticks on
+      // "Submitting…" forever with nothing on screen to explain why.
+      console.error("createOrder threw:", e);
+      setSaveError("Could not reach the server. Please try again.");
+      return;
+    } finally {
+      setSaving(false);
+    }
 
     if (!result.ok) {
       setSaveError(result.error);
       return;
     }
     setSavedId(result.id);
-    // Also open a pre-filled WhatsApp message to the bakery.
-    const url = `https://wa.me/${agent.whatsapp}?text=${encodeURIComponent(buildSummary())}`;
+    // Keep the link on screen as well as opening it: if the popup is
+    // blocked, or the agent's number has no WhatsApp account, the customer
+    // still has something to tap.
+    setWaUrl(url);
     window.open(url, "_blank");
   };
 
@@ -534,6 +552,16 @@ export default function OrderForm({ agent }: { agent: Agent }) {
                   </span>
                   . We&apos;ll confirm with you shortly.
                 </p>
+                {waUrl && (
+                  <a
+                    href={waUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-3 inline-block rounded-full bg-emerald-600 px-6 py-2.5 text-sm font-bold text-cream-soft shadow hover:brightness-110"
+                  >
+                    💬 Send to {agent.name} on WhatsApp
+                  </a>
+                )}
               </div>
             ) : (
               <button
