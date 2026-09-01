@@ -99,7 +99,7 @@ const PRODUCTS: Product[] = [
   },
   {
     id: "kuih-small",
-    no: "05",
+    no: "06",
     name: "Kuih Lapis (Small)",
     cn: "印尼千层糕 · 小",
     desc: "需提早预定 / Pre-order",
