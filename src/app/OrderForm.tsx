@@ -1,7 +1,7 @@
 "use client";
 
 import type { Agent } from "@/lib/agents";
-import type { OrderInput } from "@/lib/types";
+import { refCode, type OrderInput } from "@/lib/types";
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import { createOrder } from "./actions";
@@ -198,9 +198,10 @@ export default function OrderForm({ agent }: { agent: Agent }) {
   const currency = (n: number) =>
     `RM${n.toLocaleString("en-MY", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-  const buildSummary = () => {
+  const buildSummary = (ref?: string) => {
     const lines: string[] = [];
     lines.push("*🥮 Angel Bakery — 2026 Moon Cake Order*");
+    if (ref) lines.push(`*Ref:* ${ref}`);
     lines.push("");
     if (customer.name) lines.push(`*Name:* ${customer.name}`);
     if (customer.contact) lines.push(`*Contact:* ${customer.contact}`);
@@ -276,11 +277,6 @@ export default function OrderForm({ agent }: { agent: Agent }) {
     setSaveError(null);
     if (orderedItems.length === 0) return;
 
-    // Built before the await: once the server round-trip finishes the
-    // browser may have dropped user activation, and window.open would be
-    // blocked without saying so.
-    const url = `https://wa.me/${agent.whatsapp}?text=${encodeURIComponent(buildSummary())}`;
-
     setSaving(true);
     let result: Awaited<ReturnType<typeof createOrder>>;
     try {
@@ -300,9 +296,14 @@ export default function OrderForm({ agent }: { agent: Agent }) {
       return;
     }
     setSavedId(result.id);
-    // Keep the link on screen as well as opening it: if the popup is
-    // blocked, or the agent's number has no WhatsApp account, the customer
-    // still has something to tap.
+    // The reference exists only once the order is saved, so the message —
+    // and so the link — cannot be built any earlier. That spends the
+    // browser's user-activation window, so window.open may be blocked; the
+    // success panel carries the same link as a button for exactly that, and
+    // for when the agent's number has no WhatsApp account.
+    const url = `https://wa.me/${agent.whatsapp}?text=${encodeURIComponent(
+      buildSummary(refCode(result.id)),
+    )}`;
     setWaUrl(url);
     window.open(url, "_blank");
   };
@@ -553,7 +554,7 @@ export default function OrderForm({ agent }: { agent: Agent }) {
                 <p className="mt-1 text-sm text-emerald-700/80">
                   Reference:{" "}
                   <span className="font-mono font-semibold">
-                    {savedId.slice(-8).toUpperCase()}
+                    {refCode(savedId)}
                   </span>
                   . We&apos;ll confirm with you shortly.
                 </p>
@@ -632,6 +633,7 @@ function Header() {
 const BANNER_SIZES = "(min-width: 640px) 896px, 100vw";
 
 const NOTICE = "2026 中秋礼盒 限量发售 售完无补✨";
+
 
 // The limited-release notice and this year's boxes, directly under the
 // header.

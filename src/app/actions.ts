@@ -11,7 +11,7 @@ import {
   signSession,
   sessionCookieOptions,
 } from "@/lib/session";
-import type { OrderInput, OrderStatus } from "@/lib/types";
+import { refCode, type OrderInput, type OrderStatus } from "@/lib/types";
 import { getAgent, DEFAULT_AGENT } from "@/lib/agents";
 import { ORDER_STATUSES } from "@/lib/types";
 
@@ -99,6 +99,19 @@ export async function createOrder(
         remarks: input.remarks || null,
       },
     });
+    // The ref derives from the id, so it can only be written once the row
+    // exists. Failing here is not worth losing a saved order over: every
+    // surface derives the same code from the id anyway, so the column is a
+    // convenience for looking orders up, not the source of truth.
+    try {
+      await prisma.order.update({
+        where: { id: order.id },
+        data: { ref: refCode(order.id) },
+      });
+    } catch (e) {
+      console.error("could not store ref for", order.id, e);
+    }
+
     revalidatePath("/dashboard");
     return { ok: true, id: order.id };
   } catch (e) {

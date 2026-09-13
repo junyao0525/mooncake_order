@@ -18,6 +18,9 @@ datasource db {
 
 model Order {
   id          String   @id @default(cuid())
+  // Short human-quotable code derived from id — see refCode() in lib/types.
+  // Nullable because rows created before the column existed are backfilled.
+  ref         String?  @unique
   // Which agent's link the order came through (slug from src/lib/agents.ts).
   agent       String?
   // Customer info
